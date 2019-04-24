@@ -70,10 +70,9 @@ the logic of LN4 Java Backend and create around it the functionality need to ext
 Java LN4 Backend and Middle Ware >> Json Api >> lnxfea/lnxmcp fronted  >> Site or application
 
 **For more info:**
-* https://github.com/linhunix/lnxmcp/wiki/ ( Wiki GitHub Pages )
-* https://linhunix.github.io/lnxmcp-docs/Docs/api ( Api Pages )
-* https://linhunix.github.io/lnxmcp-docs/Docs/api/modules ( Modules Api Pages )
-* ( https://linhunix.github.io/lnxmcp-docs/Docs/api/modules/ )[modules]
+* [wiki Pages](https://github.com/linhunix/lnxmcp/wiki/)
+* [Api Pages](https://linhunix.github.io/lnxmcp-docs/Docs/api)
+* [Api Modules Pages](https://linhunix.github.io/lnxmcp-docs/Docs/api/modules)
    
 tag to init row:
 
