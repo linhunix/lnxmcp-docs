@@ -9,6 +9,8 @@ and your functionality is an extension of it :
 - Laravel
 
 
+
+
         Web >> MVP/MVC >> Your Code (as an extension of MVP/MVC);
 
 A MCP is a layer, whe you ad this on your code, then is automatic estended with this features
