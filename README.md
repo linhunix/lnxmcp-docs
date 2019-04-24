@@ -5,13 +5,15 @@ Is a simple MCP/MVC framework with out compose or other features an compatible w
 ### Why MCP? ###
 The big difference of a standard **mvc** and **mvp** is the presence obbligatories of a central code.
 and your functionality is an extension of it :
+
+        Web >> MVP/MVC >> Your Code (as an extension of MVP/MVC);
+
 - Slim 
 - Laravel
 
 
 
 
-        Web >> MVP/MVC >> Your Code (as an extension of MVP/MVC);
 
 A MCP is a layer, whe you ad this on your code, then is automatic estended with this features
 
