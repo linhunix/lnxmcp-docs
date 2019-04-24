@@ -63,9 +63,9 @@ the logic of LN4 Java Backend and create around it the functionality need to ext
 
 Java LN4 Backend and Middle Ware >> Json Api >> lnxfea/lnxmcp fronted  >> Site or application
 
-**For more info [[https://github.com/linhunix/lnxmcp/wiki/]]( Wiki GitHub Pages )**
+**For more info https://github.com/linhunix/lnxmcp/wiki/ ( Wiki GitHub Pages )**
   
    
 tag to init row:
 
-    <? /*LNXMCP-INIT*/ if (function_exists("lnxmcp")==false){ include $_SERVER["DOCUMENT_ROOT"]."/app.php" ; }; lnxmcp()->imhere(); /*LNXMCP-END*/ ?>
+    <?php /*LNXMCP-INIT*/ if (function_exists("lnxmcp")==false){ include $_SERVER["DOCUMENT_ROOT"]."/app.php" ; }; lnxmcp()->imhere(); /*LNXMCP-END*/ ?>
