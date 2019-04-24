@@ -73,7 +73,7 @@ Java LN4 Backend and Middle Ware >> Json Api >> lnxfea/lnxmcp fronted  >> Site o
 * https://github.com/linhunix/lnxmcp/wiki/ ( Wiki GitHub Pages )
 * https://linhunix.github.io/lnxmcp-docs/Docs/api ( Api Pages )
 * https://linhunix.github.io/lnxmcp-docs/Docs/api/modules ( Modules Api Pages )
-  
+* ( https://linhunix.github.io/lnxmcp-docs/Docs/api/modules/ )[modules]
    
 tag to init row:
 
