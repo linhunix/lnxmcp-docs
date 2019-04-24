@@ -12,6 +12,7 @@ and your functionality is an extension of it :
 
 A MCP is a layer, whe you ad this on your code, then is automatic estended with this features
 
+
         Web >> Your Code << MCP >> New Features;
     
 That make the developper and the designer in a very confident solution :
