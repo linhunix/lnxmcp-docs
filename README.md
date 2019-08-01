@@ -3,9 +3,11 @@ Master Control Program
 Is a simple MCP/MVC framework with out compose or other features an compatible with php 5.3 and more 
 
 ### Download ###
-* [Stable Phar Version](https://github.com/linhunix/lnxmcp/blob/3.4.0/dist/lnxmcp.phar){:target="_blank"}
+* [Stable Phar Version](https://github.com/linhunix/lnxmcp/blob/3.4.0/dist/lnxmcp.phar)
 
-* [Git source repository](https://github.com/linhunix/lnxmcp/){:target="_blank"}
+* [Git source repository](https://github.com/linhunix/lnxmcp/)
+
+if for any question the link doesn't, use left mouse open on new tab.
 
 ### Why MCP? ###
 The big difference of a standard **mvc** and **mvp** is the presence obbligatories of a central code.
@@ -75,11 +77,14 @@ the logic of LN4 Java Backend and create around it the functionality need to ext
 Java LN4 Backend and Middle Ware >> Json Api >> lnxfea/lnxmcp fronted  >> Site or application
 
 **For more info:**
-* [Wiki Pages](https://github.com/linhunix/lnxmcp/wiki/){:target="_blank"}
-* [Api Pages](https://linhunix.github.io/lnxmcp-docs/Docs/api){:target="_blank"}
-* [Api Modules Pages](https://linhunix.github.io/lnxmcp-docs/Docs/api/modules){:target="_blank"}
+* [Wiki Pages](https://github.com/linhunix/lnxmcp/wiki/)
+* [Api Pages](https://linhunix.github.io/lnxmcp-docs/Docs/api)
+* [Api Modules Pages](https://linhunix.github.io/lnxmcp-docs/Docs/api/modules)
 
-   
+if for any question the link doesn't, use left mouse open on new tab.
+
+
+
 tag to init row:
 
     <?php /*LNXMCP-INIT*/ if (function_exists("lnxmcp")==false){ include $_SERVER["DOCUMENT_ROOT"]."/app.php" ; }; lnxmcp()->imhere(); /*LNXMCP-END*/ ?>
