@@ -111,6 +111,12 @@ final class masterControlProgram
      *
      * @var string
      */
+    private $buffer; // is a test class to integrate slim on the code
+    /**
+     * Short Name of this application.
+     *
+     * @var string
+     */
     private $event; // is a test class to integrate slim on the code
     /**
      * Short Name of this application.
@@ -158,6 +164,12 @@ final class masterControlProgram
      * @var class
      */
     private $mcpTools;
+    /**
+     * start  variable.
+     *
+     * @var float
+     */
+    private $startTime;
     /////////////////////////////////////////////////////////////////////////////
     // CONSTRUCTOR AND INIT  - LEGACY SETTING
     /////////////////////////////////////////////////////////////////////////////
@@ -169,6 +181,7 @@ final class masterControlProgram
      */
     public function __construct(array $scopeIn)
     {
+        $this->startTime = $this->getFloatTime();
         $this->pathapp = $scopeIn['app.path'].'/App/';
         $this->common = array();
 
@@ -366,6 +379,124 @@ final class masterControlProgram
     public function RemCommon()
     {
         $this->mcpLogging->webRem('Common', $this->common);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////
+    // BUFFER CONTROLLER
+    /////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @param null $resname
+     */
+    public function getBuffer($resname)
+    {
+        if ($resname == null) {
+            return null;
+        }
+        if (isset($this->buffer[$resname])) {
+            return $this->buffer[$resname];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param $resname name of value
+     * @param $revalue values
+     *
+     * @return bool if operation coplete success true (othervise false)
+     */
+    public function appendBuffer($resname, $resvalue)
+    {
+        if (!isset($this->buffer[$resname])) {
+            $this->buffer[$resname] = array();
+        }
+        $this->buffer[$resname][] = $resvalue;
+
+        return true;
+    }
+
+    /**
+     * @param $resname name of value
+     * @param $revalue values
+     *
+     * @return bool if operation coplete success true (othervise false)
+     */
+    public function updateBuffer($resname, $resindex, $resvalue)
+    {
+        if (!isset($this->buffer[$resname])) {
+            $this->buffer[$resname] = array();
+        }
+        if (!isset($this->buffer[$resname][$resindex])) {
+            $this->buffer[$resname][$resindex] = 0;
+        }
+        switch ($resvalue) {
+        case '++':
+            $val = intval($this->buffer[$resname][$resindex]);
+            ++$val;
+            $this->buffer[$resname][$resindex] = $val;
+            break;
+        case '--':
+            $val = intval($this->buffer[$resname][$resindex]);
+            --$val;
+            $this->buffer[$resname][$resindex] = $val;
+            break;
+        default:
+            $this->buffer[$resname][$resindex] = $resvalue;
+            break;
+        }
+
+        return true;
+    }
+
+    /**
+     * RemBuffer
+     * Display on web comment
+     * the common array.
+     */
+    public function RemBuffer($resname)
+    {
+        if (!isset($this->buffer[$resname])) {
+            $this->buffer[$resname] = array();
+        }
+        $this->mcpLogging->webRem('Buffer:'.$resname, $this->buffer[$resname]);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////
+    // BENCHMARCK
+    /////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * getFloatTime function.
+     *
+     * @return float
+     */
+    private function getFloatTime()
+    {
+        list($usec, $sec) = explode(' ', microtime());
+
+        return (float) $usec + (float) $sec;
+    }
+
+    /**
+     * benchmark function.
+     *
+     * @param string $stepmessage
+     * @param bool   $rem
+     *
+     * @return float
+     */
+    public function benchmark($stepmessage, $rem = false)
+    {
+        $time_end = $this->getFloatTime();
+        $time = $time_end - $this->startTime;
+        if ($rem == false) {
+            $this->debug('['.$time.']:'.$stepmessage);
+        } else {
+            $this->Rem($stepmessage, $time);
+        }
+
+        return $time;
     }
 
     /////////////////////////////////////////////////////////////////////////////
@@ -770,9 +901,9 @@ final class masterControlProgram
      * @param bool   $replace remplace header
      * @param int    $retcode html return code if need
      */
-    public function header($string, $end = false, $replace = true, $retcode = null)
+    public function header($string, $end = false, $replace = true, $retcode = null,$htmljs=false)
     {
-        $this->mcpLogging->header($string, $end, $replace, $retcode);
+        $this->mcpLogging->header($string, $end, $replace, $retcode,$htmljs);
     }
 
     /**
@@ -1386,7 +1517,7 @@ final class masterControlProgram
      * @param mixed $scopeIn
      * @param mixed $modinit
      */
-    public function mail($page = nulltestmail, $scopeIn = array(), $modinit = null, $vendor = null)
+    public function mail($page = 'sendmail', $scopeIn = array(), $modinit = null, $vendor = null)
     {
         $this->info('MCP>>mail>>'.$page);
         if (!is_array($scopeIn)) {
@@ -1424,7 +1555,7 @@ final class masterControlProgram
         $this->info('MCP>>'.$vendor.'>>page>>'.$page);
         $this->RunEvent('page_start_'.$page);
         $ret = $this->template($page, $pathtpl, true, $scopeIn, $modinit, null, $vendor, 'Page', $hasreturn);
-        $this->RunEvent('page_start_'.$page);
+        $this->RunEvent('page_stop_'.$page);
 
         return $ret;
     }
@@ -1456,7 +1587,7 @@ final class masterControlProgram
         $this->info('MCP>>'.$vendor.'>>Render>>'.$block);
         $this->RunEvent('block_start_'.$block);
         $ret = $this->template($block, $pathsrc, true, $scopeIn, $modinit, null, $vendor, 'Render', $hasreturn);
-        $this->RunEvent('block_start_'.$block);
+        $this->RunEvent('block_stop_'.$block);
 
         return $ret;
     }
@@ -1484,7 +1615,7 @@ final class masterControlProgram
         $this->info('MCP>>'.$vendor.'>>Render>>'.$block);
         $this->RunEvent('block_start_'.$block);
         $ret = $this->template($block, $pathsrc, true, $scopeIn, $modinit, null, $vendor, 'Render', $hasreturn);
-        $this->RunEvent('block_start_'.$block);
+        $this->RunEvent('block_stop_'.$block);
 
         return $ret;
     }
@@ -1512,7 +1643,7 @@ final class masterControlProgram
         $this->info('MCP>>'.$vendor.'>>block>>'.$block);
         $this->RunEvent('block_start_'.$block);
         $ret = $this->template($block, $pathtpl, true, $scopeIn, $modinit, null, $vendor, 'Block', $hasreturn);
-        $this->RunEvent('block_start_'.$block);
+        $this->RunEvent('block_stop_'.$block);
 
         return $ret;
     }
@@ -1900,6 +2031,22 @@ final class masterControlProgram
         }
 
         return true;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////
+    // UCM CONTROLLER
+    /////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * UCM function.
+     *
+     * @param array $scopein
+     *
+     * @return UniversalContentManager
+     */
+    public function ucm($scopein = null)
+    {
+        return new \LinHUniX\Mcp\Tools\UniversalContentManager($scopein);
     }
 }
 

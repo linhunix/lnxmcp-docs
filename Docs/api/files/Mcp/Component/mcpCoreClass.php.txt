@@ -92,6 +92,10 @@ final class mcpCoreClass
         if (!isset($this->scopeOut[$this->sub])) {
             $this->scopeOut[$this->sub] = array();
         }
+        if (!is_array($this->scopeOut[$this->sub])) {
+            $prev = $this->scopeOut[$this->sub];
+            $this->scopeOut[$this->sub] = array('prev' => $prev);
+        }
         $this->scopeOut[$this->sub][$name] = $value;
         $this->shareModuleVars();
     }
@@ -199,7 +203,8 @@ final class mcpCoreClass
     public function statmentModule($path, $callname, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null, $type = null)
     {
         //// BASE SETTINGS
-        $moduledef = 'mod.path';
+        $moduledef = 'app.mod.path';
+        $moduledns = 'app.mod.namespace';
         if ($this->flagClearVars) {
             ++$this->sub;
             $this->scopeIn[$this->sub] = array();
@@ -216,15 +221,15 @@ final class mcpCoreClass
         $this->scopeCtl[$this->sub]['file'] = $path;
         $this->scopeCtl[$this->sub]['tag'] = 'app';
         $this->scopeCtl[$this->sub]['type'] = $type;
+        $modvnd = '.'.$modinit;
         //// VENDOR SETTINGS
         if ($vendor != null) {
-            $moduledef .= '.'.$vendor;
-            $modulepath = $this->mcp->getCfg($moduledef);
+            $modvnd = '.'.$vendor.'.'.$modinit;
             if ($vendor == 'LinHUniX') {
                 $this->scopeCtl[$this->sub]['module'] = 'LinHUniX\\';
                 $this->scopeCtl[$this->sub]['altmodule'] = 'LinHUniX_';
-                $this->scopeCtl[$this->sub]['file'] = '/';
-                $this->scopeCtl[$this->sub]['auto'] = '/';
+                $this->scopeCtl[$this->sub]['file'] .= '/';
+                $this->scopeCtl[$this->sub]['auto'] .= '/';
             } else {
                 $this->scopeCtl[$this->sub]['auto'] .= '/'.$vendor.'/';
                 $this->scopeCtl[$this->sub]['module'] .= $vendor.'\\';
@@ -234,10 +239,6 @@ final class mcpCoreClass
                 } else {
                     $this->scopeCtl[$this->sub]['file'] .= '/'.$vendor.'/';
                 }
-            }
-            if (!empty($modulepath)) {
-                $this->scopeCtl[$this->sub]['file'] = $modulepath.'/';
-                $this->scopeCtl[$this->sub]['auto'] = $modulepath.'/';
             }
         }
         //// MODULE SETTINGS
@@ -251,14 +252,26 @@ final class mcpCoreClass
         $this->scopeCtl[$this->sub]['module'] .= $modinit;
         $this->scopeCtl[$this->sub]['defmodule'] .= $modinit;
         $this->scopeCtl[$this->sub]['altmodule'] .= $modinit;
-        $moduledef .= '.'.$modinit;
+        $this->scopeCtl[$this->sub]['auto'] .= $modinit;
+        $this->scopeCtl[$this->sub]['file'] .= $modinit.'/';
+        // if HAVE A PARTICOLAR namespace rewrite
+        $moduledns .= $modvnd;
+        $modulens = $this->mcp->getCfg($moduledns);
+        if (($modulens != '') and ($modulens != null)) {
+            $this->scopeCtl[$this->sub]['auto'] .= '/'.$modulens.'/';
+            $this->scopeCtl[$this->sub]['module'] .= $modulens.'\\';
+            $this->scopeCtl[$this->sub]['altmodule'] .= $modulens.'_';
+        }
+        // if HAVE A PARTICOLAR path rewrite
+        $moduledef .= $modvnd;
         $modulepath = $this->mcp->getCfg($moduledef);
-        $this->scopeCtl[$this->sub]['file'] .= $modinit;
-        if (!empty($modulepath)) {
+        lnxmcp()->debug($moduledef, $modulepath);
+        if (($modulepath != '') and ($modulepath != null)) {
             $this->scopeCtl[$this->sub]['file'] = $modulepath.'/';
             $this->scopeCtl[$this->sub]['auto'] = $modulepath.'/';
         }
-        $this->scopeCtl[$this->sub]['auto'] .= $modinit.'/autoload.php';
+        /// DIR AND AUTOLOAD
+        $this->scopeCtl[$this->sub]['auto'] .= '/autoload.php';
         $this->scopeCtl[$this->sub]['dir'] = $this->scopeCtl[$this->sub]['file'];
         /// TYPE DEFINITIONS
         if ($type != null) {
@@ -287,7 +300,7 @@ final class mcpCoreClass
         $this->scopeCtl[$this->sub]['preload'] = $ispreload;
         $this->scopeCtl[$this->sub]['path'] = $path;
         $this->scopeCtl[$this->sub]['chk'] = false;
-        if (isset($scopeIn['run'])) {
+        if (isset($scopeIn[$this->sub]['run'])) {
             $this->scopeCtl[$this->sub]['run'] = $this->scopeIn[$this->sub]['run'];
         } else {
             $this->scopeCtl[$this->sub]['run'] = 'run';
@@ -352,6 +365,9 @@ final class mcpCoreClass
     {
         $this->setScopeOut('status', $status);
         $this->getMcp()->debug('status:['.$status.']'.$message);
+        if (!isset($this->scopeOut[$this->sub])) {
+            $this->scopeOut[$this->sub] = array('history' => array());
+        }
         if (!isset($this->scopeOut[$this->sub]['history']['ipl'])) {
             $this->scopeOut[$this->sub]['history'] = array('ipl' => 0);
         }
@@ -808,7 +824,14 @@ final class mcpCoreClass
             if (class_exists($this->scopeCtl[$this->sub]['module'])) {
                 $this->setStatus(true, 'load class '.$this->scopeCtl[$this->sub]['module']);
                 $modclass = $this->scopeCtl[$this->sub]['module'];
-                @$retobj = new $modclass($this->getMcp(), $this->scopeCtl[$this->sub], $this->scopeIn[$this->sub]);
+                if (!isset($mcp)) {
+                    $mcp = $this->getMcp();
+                }
+                $retobj = new $modclass(
+                    $mcp,
+                    $this->scopeCtl[$this->sub],
+                    $this->scopeIn[$this->sub]
+                );
             } elseif (function_exists($this->scopeCtl[$this->sub]['module'])) {
                 $this->setStatus(true, 'load function '.$this->scopeCtl[$this->sub]['module']);
                 $modfunction = $this->scopeCtl[$this->sub]['module'];
