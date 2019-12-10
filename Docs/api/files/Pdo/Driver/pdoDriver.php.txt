@@ -28,7 +28,8 @@ class pdoDriver extends mcpBaseModelClass
     public $debug;
     public $database;
     public $dburlcon;
-
+    public $lasterror;
+    public $lastrows;
     /**
      * __construct.
      *
@@ -81,6 +82,20 @@ class pdoDriver extends mcpBaseModelClass
         return $this->getTable('SHOW TABLES');
     }
 
+    /**
+     * Check if pdo is live.
+     *
+     * @return bool status
+     */
+    public function isLive()
+    {
+        if ($this->PDO != null) {
+            return true;
+        }
+
+        return false;
+    }
+
     /*
      * real_escape_string
      * remplace the mysqlLegacyRealEscapeString
@@ -92,12 +107,14 @@ class pdoDriver extends mcpBaseModelClass
      *
      * @return string
      */
-    public function real_escape_string($value)
+    public function real_escape_string($value,$oldmethod=true)
     {
-        $search = array('\\',  "\x00", "\n",  "\r",  "'",  '"', "\x1a");
-        $replace = array('\\\\', '\\0', '\\n', '\\r', "\'", '\"', '\\Z');
-
-        return str_replace($search, $replace, $value);
+        if ($oldmethod==true){
+            $search = array('\\',  "\x00", "\n",  "\r",  "'",  '"', "\x1a");
+            $replace = array('\\\\', '\\0', '\\n', '\\r', "\'", '\"', '\\Z');
+            return str_replace($search, $replace, $value);
+        }
+        return $this->PDO->quote($value);
     }
 
     /**
@@ -121,38 +138,61 @@ class pdoDriver extends mcpBaseModelClass
      * intexec  Direct PDO execution.
      *
      * @param mixed $query
-     *
+     * @param mixed $noupdate error 
      * @return any
      */
-    public function intexec($query)
+    public function intexec($query, $noupdate = false)
     {
         try {
             if ($this->PDO == null) {
+                $this->getMcp()->warning($this->database.':is null!!');
+
                 return false;
             }
-            $query = str_replace("'", '"', $query);
 
-            return $this->PDO->exec($query);
+            $res = $this->PDO->exec($query);
+            $this->getMcp()->debug($this->database.':return row update='.print_r($res, 1));
+            if ($noupdate == false and $res > 0) {
+                return true;
+            }
+            if ($noupdate == true and $res >= 0) {
+                return true;
+            }
+            $this->getMcp()->warning($this->database.':row='.print_r($res, 1));
+            return false;
         } catch (PDOException $pe) {
-            $this->getMcp()->warning($this->database.$pe->getMessage());
-
+            $this->getMcp()->warning($this->database.':PDO ERR'.$pe->getMessage());
+            $this->lasterror=$this->PDO->errorInfo();
             return false;
         } catch (Exception $e) {
-            $this->getMcp()->warning($this->database.$e->getMessage());
-
+            $this->getMcp()->warning($this->database.':GEN ERR'.$e->getMessage());
+            $this->lasterror=$e->getMessage();
             return false;
         }
     }
-
+  /**
+     * intexec  Direct PDO execution.
+     *
+     * @param mixed $query
+     *
+     * @return any
+     */
+    public function rawexec($sql,$noupdate=false){
+        $this->getMcp()->debug('queryIn:'.$this->database.'='.$sql);
+        return $this->intexec($sql,$noupdate);
+    }
+  
     /**
      * execute.
      *
      * @param mixed $sql
      * @param mixed $var
+     * @param mixed $noupdate error 
+     * @param mixed $nopqute issue mssql
      *
      * @return bool
      */
-    public function execute($sql, $var = array())
+    public function execute($sql, $var = array(), $noupdate = false,$noquot=true)
     {
         $this->getMcp()->debug('queryIn:'.$this->database.'='.$sql);
         if (isset($var['WHERE'])) {
@@ -164,11 +204,15 @@ class pdoDriver extends mcpBaseModelClass
             $sql = str_replace('[R:'.$k.']', $v, $sql);
             $sql = str_replace('[S:'.$k.']', \stripslashes($v), $sql);
         }
+        if ($noquot){
+            $sql = str_replace("'", '"', $sql);
+        }
         $this->getMcp()->debug('queryOut:'.$this->database.'='.$sql);
-        if ($this->intexec($sql) == false) {
+        if ($this->intexec($sql, $noupdate) == false) {
             $this->getMcp()->warning('[KO]'.$this->database.'='.$sql);
             if ($this->PDO != null) {
-                $this->getMcp()->warning('[KO]'.$this->database.': '.print_r($this->PDO->errorInfo(), 1));
+                $this->lasterror=$this->PDO->errorInfo();
+                $this->getMcp()->warning('[KO]'.$this->database.': '.print_r($this->lasterror, 1));
             } else {
                 $this->getMcp()->warning('[KO]'.$this->database.': PDO IS NULL!!!');
             }
@@ -214,7 +258,8 @@ class pdoDriver extends mcpBaseModelClass
         } catch (Exception $e) {
             $this->PDO->rollback();
             $this->getMcp()->warning('[KO]'.$this->database.'='.$sql.':'.$e->getMessage());
-
+            $this->lasterror=$this->PDO->errorInfo();
+            $this->getMcp()->warning('[KO]'.$this->database.'='.$sql.':'.\print_r($this->lasterror,1));
             return false;
         }
 
@@ -242,11 +287,11 @@ class pdoDriver extends mcpBaseModelClass
             $statement = $this->PDO->query($sql);
         } catch (PDOException $pe) {
             $this->getMcp()->warning($this->database.$pe->getMessage());
-
+            $this->lasterror=$this->PDO->errorInfo();
             return null;
         } catch (Exception $e) {
             $this->getMcp()->warning($this->database.$e->getMessage());
-
+            $this->lasterror=$e->getMessage();
             return null;
         }
         if ($this->debug) {
@@ -264,12 +309,16 @@ class pdoDriver extends mcpBaseModelClass
      * @param mixed $sql
      * @param mixed $var
      * @param mixed $err
+     * @param mixed $fetchmode
      *
      * @return array
      */
-    public function simpleQuery($sql, $var = array(), $err = true)
+    public function simpleQuery($sql, $var = array(), $err = true, $fetchmode=null)
     {
         $result_set = array();
+        if ($fetchmode==null){
+            $fetchmode=PDO::FETCH_BOTH;
+        }
         $this->getMcp()->debug('queryIn:'.$this->database.'='.$sql);
         if (isset($var['WHERE'])) {
             $sql = str_replace('[WHERE]', $var['WHERE'], $sql);
@@ -292,7 +341,7 @@ class pdoDriver extends mcpBaseModelClass
 
                 return false;
             } else {
-                while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
+                while ($row = $statement->fetch($fetchmode)) {
                     $result_set[] = $row;
                 }
             }
@@ -309,6 +358,55 @@ class pdoDriver extends mcpBaseModelClass
         }
 
         return $result_set;
+    }
+    /**
+     * simpleQuery.
+     *
+     * @param mixed $sql
+     * @param mixed $var
+     * @param mixed $err
+     *
+     * @return array
+     */
+    public function queryLabel($sql, $var = array(), $err = true){
+        $this->simpleQuery($sql,$var,$err,PDO::FETCH_ASSOC);
+    }
+    /**
+     * simpleQuery.
+     *
+     * @param mixed $sql
+     * @param mixed $var
+     * @param mixed $err
+     *
+     * @return array
+     */
+    public function queryNoLabel($sql, $var = array(), $err = true){
+        $this->simpleQuery($sql,$var,$err,PDO::FETCH_NUM);
+    }
+
+    /**
+     * indexed query function.
+     *
+     * @param string $sql
+     * @param string $idfield default = 'id'
+     * @param bool   $sort    default = true
+     *
+     * @return array dataresult with index as $idfield
+     */
+    public function indexQuery($sql, $idfield = 'id', $sort = true)
+    {
+        $getData = $this->simpleQuery($sql);
+        $resData = array();
+        if (is_array($getData)) {
+            foreach ($getData as $row) {
+                $resData[$row[$idfield]] = $row;
+            }
+        }
+        if ($sort == true) {
+            ksort($resData);
+        }
+
+        return $resData;
     }
 
     /**
@@ -369,7 +467,7 @@ class pdoDriver extends mcpBaseModelClass
     public function dataWalk($sql, $callback, $var = array(), &$funarr = array(), $err = true)
     {
         $res = $this->data_table($sql, $var, $err);
-        if (count($res) > 0) {
+        if (is_array($res)) {
             return array_walk($res, $callback, $funarr);
         }
 
@@ -398,6 +496,25 @@ class pdoDriver extends mcpBaseModelClass
     }
 
     /**
+     * function firstRowField
+     * reorder the result by the id.
+     *
+     * @param string $sql
+     * @param string $idfield default='id'
+     *
+     * @return string/null
+     */
+    public function firstRowField($sql, $idfield = 'id')
+    {
+        $getData = $this->firstRow($sql);
+        if (isset($getData[$idfield])) {
+            return $getData[$idfield];
+        }
+
+        return null;
+    }
+
+    /**
      * data_row (alias)
      * firstRow show only the first record.
      *
@@ -412,7 +529,7 @@ class pdoDriver extends mcpBaseModelClass
         return $this->firstRow($sql);
     }
 
-    //Delete Row from table
+    //Delete Row from table @need review
     public function delRow($_table, $_id)
     {
         if (($_table != '') && ($_id > 0)) {
@@ -429,6 +546,8 @@ class pdoDriver extends mcpBaseModelClass
      * getRow.
      *
      * Get Row from table
+     *
+     * @todo need review
      *
      * @param mixed  $_fields
      * @param string $_table
@@ -466,6 +585,8 @@ class pdoDriver extends mcpBaseModelClass
     /**
      * getRows.
      *
+     * @todo need review
+     *
      * @param mixed $_fields
      * @param mixed $_table
      * @param mixed $_order_by
@@ -492,6 +613,13 @@ class pdoDriver extends mcpBaseModelClass
         }
 
         return $_result;
+    }
+    /**
+     * return the last error on pdo
+     * @return mixed array/string
+     */
+    public function getLastError(){
+        return $this->lasterror;
     }
 
     //Get Last Run id from PDO
@@ -566,7 +694,7 @@ class pdoDriver extends mcpBaseModelClass
         return true;
     }
 
-    //GET SetRow SQL
+    //GET SetRow SQL//todo need review
     public function getSql($_fields, $_table, $emptyval = false)
     {
         $_stmt = '';
@@ -599,6 +727,30 @@ class pdoDriver extends mcpBaseModelClass
         }
 
         return $_stmt;
+    }
+
+    /**
+     * function getNames
+     * reorder the result by the id
+     * create 21/10/2019 - Andrea M. as ft compatibilty logic.
+     *
+     * @todo need review
+     *
+     * @param string $dstname
+     * @param string $table
+     * @param string $srcname
+     * @param string $srcvalue
+     *
+     * @return string/boolean
+     */
+    public function getNames($dstname, $table, $srcname, $srcvalue)
+    {
+        $row = $this->firstRow('SELECT '.$dstname.' FROM '.$table.' WHERE '.$srcname.' = \' '.$srcvalue.' \' ');
+        if (isset($row[$dstname])) {
+            return $row[$dstname];
+        }
+
+        return false;
     }
 
     /**

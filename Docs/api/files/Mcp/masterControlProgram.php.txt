@@ -182,7 +182,7 @@ final class masterControlProgram
     public function __construct(array $scopeIn)
     {
         $this->startTime = $this->getFloatTime();
-        $this->pathapp = $scopeIn['app.path'].'/App/';
+        $this->pathapp = $scopeIn['app.path.core'];
         $this->common = array();
 
         $this->event = array();
@@ -190,12 +190,12 @@ final class masterControlProgram
         if (isset($scopeIn['app.path.module'])) {
             $this->pathsrc = $scopeIn['app.path.module'];
         } else {
-            $this->pathsrc = $this->pathapp.'Module/';
+            $this->pathsrc = $this->pathapp.'mod/';
         }
         if (isset($scopeIn['app.path.template'])) {
             $this->pathtpl = $scopeIn['app.path.template'];
         } else {
-            $this->pathtpl = $this->pathapp.'Template/';
+            $this->pathtpl = $this->pathapp.'tpl/';
         }
         if (isset($scopeIn['mcp.path.module'])) {
             $this->pathmcp = $scopeIn['mcp.path.module'];
@@ -890,7 +890,7 @@ final class masterControlProgram
      */
     public function move($dest, $default = null, $ext = '', $path = null, $andEnd = true)
     {
-        $this->mcpLogging->move($dest, $default, $ext, $path, $andEnd);
+        $this->mcpTools->move($dest, $default, $ext, $path, $andEnd);
     }
 
     /**
@@ -901,9 +901,21 @@ final class masterControlProgram
      * @param bool   $replace remplace header
      * @param int    $retcode html return code if need
      */
-    public function header($string, $end = false, $replace = true, $retcode = null,$htmljs=false)
+    public function header($string, $end = false, $replace = true, $retcode = null, $htmljs = false)
     {
-        $this->mcpLogging->header($string, $end, $replace, $retcode,$htmljs);
+        $this->mcpTools->header($string, $end, $replace, $retcode, $htmljs);
+    }
+    /**
+     * header redirect and more.
+     *
+     * @param string $string  rules
+     * @param bool   $end     die after change
+     * @param bool   $replace remplace header
+     * @param int    $retcode html return code if need
+     */
+    public function redirect($string, $end = false, $replace = true, $retcode = null, $htmljs = false)
+    {
+        $this->mcpTools->httpRedirect($string, $end, $replace, $retcode, $htmljs);
     }
 
     /**
@@ -939,6 +951,18 @@ final class masterControlProgram
     public function Req2Session($arguments, $onlyPost = false)
     {
         return $this->mcpTools->Req2Session($arguments, $onlyPost);
+    }
+
+    /**
+     * Request save to session.
+     *
+     * @param type $object to conver
+     *
+     * @return array of the object
+     */
+    public function Object2Array($object)
+    {
+        return $this->mcpTools->Object2Array($object);
     }
 
     /**
@@ -985,6 +1009,19 @@ final class masterControlProgram
     public function loadModule()
     {
         $this->mcpCore->moduleLoader();
+    }
+
+    /**
+     * Load a module or a template and clear the vars.
+     */
+    public function loadLegacy()
+    {
+        $res = $this->mcpCore->loadLegacy();
+        if (isset($res['return'])) {
+            return $res['return'];
+        }
+
+        return $res;
     }
 
     /**
@@ -1106,6 +1143,30 @@ final class masterControlProgram
         }
 
         return $this->module($libname, $this->pathsrc, false, $scopeIn);
+    }
+
+    /**
+     * legacy class loader
+     * rember the class need to not have required args on constructor.
+     *
+     * @param string $callname name of the functionality
+     * @param array  $scopeIn  Input Array with the value need to work
+     * @param string $modinit  Module name where is present the code and be load and initalized
+     * @param string $subcall  used if the name of the functionality ($callname) and the subcall are different
+     * @param string $vendor   this code is part of specific vendor (ex ft )
+     * @param string $type     is a Page, Block, Controller, Driver
+     * @param string $path     path where present the basedirectory of the data
+     *
+     * @return array $ScopeOut
+     */
+    public function legacyClass($callname, array $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null, $path = null)
+    {
+        if ($path == null) {
+            $path = $this->pathsrc;
+        }
+        $this->statmentModule($path, $callname, true, $scopeIn, $modinit, $subcall, $vendor, 'Legacy');
+
+        return $this->loadLegacy();
     }
 
     /**
@@ -1396,9 +1457,9 @@ final class masterControlProgram
      * @param string $modinit   Module name where is present the code and be load and initalized
      * @param string $subcall   used if the name of the functionality ($callname) and the subcall are different
      */
-    public function api($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null)
+    public function api($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null, $mcptype = 'Api')
     {
-        mcpApiClass::api($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall, $vendor);
+        mcpApiClass::api($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall, $vendor, $mcptype);
     }
 
     /**
@@ -1410,9 +1471,9 @@ final class masterControlProgram
      * @param string $modinit   Module name where is present the code and be load and initalized
      * @param string $subcall   used if the name of the functionality ($callname) and the subcall are different
      */
-    public function apiR($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null)
+    public function apiR($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null, $mcptype = 'Api')
     {
-        mcpApiClass::apiReturn($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall, $vendor);
+        mcpApiClass::apiReturn($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall, $vendor, $mcptype);
     }
 
     /**
@@ -1426,9 +1487,9 @@ final class masterControlProgram
      *
      * @return array $scopeOut;
      */
-    public function apiA($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null)
+    public function apiA($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null, $mcptype = 'Api')
     {
-        mcpApiClass::apiArray($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall, $vendor);
+        mcpApiClass::apiArray($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall, $vendor, $mcptype);
     }
 
     /**
@@ -1437,16 +1498,16 @@ final class masterControlProgram
      * @param string $srvprc    name of the driver
      * @param bool   $ispreload is only a preload (ex page) or need to be execute (ex controller)
      * @param array  $scopeIn   Input Array with the value need to work
-     * @param string $modinit   Module name where is present the code and be load and initalized
-     * @param string $subcall   used if the name of the functionality ($callname) and the subcall are different
+     * @param streturnng $modinit   Module name where is present the code and be load and initalized
+     * @param streturnng $subcall   used if the name of the functionality ($callname) and the subcall are different
      */
-    public function apiCommon($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null)
+    public function apiCommon($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $mcptype = 'Api')
     {
-        mcpApiClass::apiCommon($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall);
+        mcpApiClreturns::apiCommon($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall, null, $mcptype);
     }
 
     /**
-     * Run Module as ToolApi Components.
+     * Run Modulreturnas ToolApi Components.
      *
      * @param string $srvprc    name of the driver
      * @param bool   $ispreload is only a preload (ex page) or need to be execute (ex controller)
@@ -1454,9 +1515,9 @@ final class masterControlProgram
      * @param string $modinit   Module name where is present the code and be load and initalized
      * @param string $subcall   used if the name of the functionality ($callname) and the subcall are different
      */
-    public function apiACommon($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null)
+    public function apiACommon($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $mcptype = 'Api')
     {
-        mcpApiClass::apiCommonArray($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall);
+        mcpApiClass::apiCommonArray($this, $srvprc, $ispreload, $scopeIn, $modinit, $subcall, null, $mcptype);
     }
 
     /**
@@ -1484,6 +1545,33 @@ final class masterControlProgram
     }
 
     /**
+     * Run Module as service Return.
+     *
+     * @param string $srvprc    name of the driver
+     * @param bool   $ispreload is only a preload (ex page) or need to be execute (ex controller)
+     * @param array  $scopeIn   Input Array with the value need to work
+     * @param string $modinit   Module name where is present the code and be load and initalized
+     * @param string $subcall   used if the name of the functionality ($callname) and the subcall are different
+     *
+     * @return array $ScopeOut
+     */
+    public function serviceR($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null, $vendor = null)
+    {
+        if ($vendor == null) {
+            $vendor = $this->defapp;
+        }
+        if (!is_array($scopeIn)) {
+            $scopeIn = array('In' => $scopeIn);
+        }
+        $this->info('MCP>>'.$vendor.'>>service(R)>>'.$srvprc);
+        $res= $this->module($srvprc, $this->pathsrc, $ispreload, $scopeIn, $modinit, $subcall, $vendor, 'Service');
+        if (isset($res["return"])) {
+            return $res["return"];
+        }
+        return false;
+    }
+
+    /**
      * Run Module as service.
      *
      * @param string $srvprc    name of the driver
@@ -1502,6 +1590,30 @@ final class masterControlProgram
         }
 
         return $this->module($srvprc, $this->pathmcp, $ispreload, $scopeIn, $modinit, $subcall, $this->defvnd, 'Service');
+    }
+
+   /**
+     * Run Module as service Return
+     *
+     * @param string $srvprc    name of the driver
+     * @param bool   $ispreload is only a preload (ex page) or need to be execute (ex controller)
+     * @param array  $scopeIn   Input Array with the value need to work
+     * @param string $modinit   Module name where is present the code and be load and initalized
+     * @param string $subcall   used if the name of the functionality ($callname) and the subcall are different
+     *
+     * @return array $ScopeOut
+     */
+    public function serviceCommonR($srvprc, $ispreload = false, $scopeIn = array(), $modinit = null, $subcall = null)
+    {
+        $this->info('MCP>>service(C)>>'.$srvprc);
+        if (!is_array($scopeIn)) {
+            $scopeIn = array('In' => $scopeIn);
+        }
+        $res= $this->module($srvprc, $this->pathmcp, $ispreload, $scopeIn, $modinit, $subcall, $this->defvnd, 'Service');
+        if (isset($res["return"])) {
+            return $res["return"];
+        }
+        return false;
     }
 
     /**
@@ -1884,6 +1996,24 @@ final class masterControlProgram
         if ($sb == true) {
             return $this->blockCommon($block, $CtrlOut, $blockModule);
         }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////
+    // PROMISE CALLER MODULE
+    /////////////////////////////////////////////////////////////////////////////
+
+    public function promise($promisename,$scopeIn=array(),$reqcmd=null,$waitcmd=null,$donecmd=null){
+        $scopeIn['promise']=$promisename;
+        if ($reqcmd!=null){
+            $scopeIn["promisecmd"]=$reqcmd;
+        }
+        if ($waitcmd!=null){
+            $scopeIn["waitcmd"]=$waitcmd;
+        }
+        if ($donecmd!=null){
+            $scopeIn["donecmd"]=$donecmd;
+        }
+        return $this->controllerCommon("promise",false,$scopeIn,"Cron");
     }
 
     /////////////////////////////////////////////////////////////////////////////

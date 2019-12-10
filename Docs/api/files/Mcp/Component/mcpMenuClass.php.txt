@@ -59,6 +59,15 @@ class mcpMenuClass
         if (isset($scopectl['ispreload'])) {
             $ispreload = $scopectl['ispreload'];
         }
+        if (isset($scopectl['isPreload'])) {
+            $ispreload = $scopectl['isPreload'];
+        }
+        if ($ispreload=='true'){
+            $ispreload=true;
+        }
+        if ($ispreload!=true){
+            $ispreload=false;
+        }
         $modinit = null;
         if (isset($scopectl['modinit'])) {
             $modinit = $scopectl['modinit'];
@@ -135,13 +144,24 @@ class mcpMenuClass
                 break;
             case 'headerHttp':
                 $header = @$scopectl['header'];
-                lnxmcp()->header($header, false,false,null,true);
+                lnxmcp()->header($header, false, false, null, true);
+                break;
+            case 'redirect':
+                $header = @$scopectl['header'];
+                lnxmcp()->redirect($header, true);
+                break;
+            case 'redirectHttp':
+                $header = @$scopectl['header'];
+                lnxmcp()->redirect($header, true, false, null, true);
                 break;
             case 'load':
                 $result = lnxmcp()->moduleLoad($callname, $modinit, $vendor, $scopeIn);
                 break;
             case 'run':
                 $result = lnxmcp()->moduleRun($callname, $scopeIn);
+                break;
+            case 'legacy':
+                $result = lnxmcp()->legacyClass($callname, $scopeIn, $modinit, $subcall, $vendor, $path);
                 break;
             case 'driver':
                 $result = lnxmcp()->driver($callname, $ispreload, $scopeIn, $modinit, $subcall, $vendor, $path);
@@ -179,6 +199,12 @@ class mcpMenuClass
             case 'api':
                 $result = lnxmcp()->api($callname, $ispreload, $scopeIn, $modinit, $subcall, $vendor);
                 break;
+            case 'apiController':
+                $result = lnxmcp()->api($callname, $ispreload, $scopeIn, $modinit, $subcall, $vendor, 'Controller');
+                break;
+            case 'apiService':
+                $result = lnxmcp()->api($callname, $ispreload, $scopeIn, $modinit, $subcall, $vendor, 'Service');
+                break;
             case 'apiReturn':
                 $result = lnxmcp()->apiR($callname, $ispreload, $scopeIn, $modinit, $subcall, $vendor);
                 break;
@@ -196,6 +222,12 @@ class mcpMenuClass
                 break;
             case 'serviceCommon':
                 $result = lnxmcp()->serviceCommon($callname, $ispreload, $scopeIn, $modinit, $subcall);
+                break;
+            case 'serviceReturn':
+                $result = lnxmcp()->serviceR($callname, $ispreload, $scopeIn, $modinit, $subcall, $vendor);
+                break;
+            case 'serviceCommonReturn':
+                $result = lnxmcp()->serviceCommonR($callname, $ispreload, $scopeIn, $modinit, $subcall);
                 break;
             case 'page':
                 $result = lnxmcp()->page($callname, $scopeIn, $modinit, $vendor);
@@ -236,14 +268,36 @@ class mcpMenuClass
             case 'showFullCommonBlock':
                 $result = lnxmcp()->showFullCommonBlock($callname, $scopeIn, $controllerModule, $blockModule);
                 break;
+            case 'promise':
+                $procmd = @$scopectl['promisecmd'];
+                $waitcmd = @$scopectl['waitcmd'];
+                $donecmd = @$scopectl['donecmd'];
+                $result = lnxmcp()->promise($callname,$scopeIn,$procmd,$waitcmd,$donecmd);
             case 'extTemplate':
                 $ext = @$scopectl['ext'];
-                echo lnxMcpExtLoad($callname, $path, $ext, $scopeIn, true);
+                echo \lnxMcpExtLoad($callname, $path, $ext, $scopeIn, true,false);
                 break;
             case 'extFile':
                 $ext = @$scopectl['ext'];
-                echo lnxMcpExtLoad($callname, $path, $ext, $scopeIn, false);
+                echo \lnxMcpExtLoad($callname, $path, $ext, $scopeIn, false,false);
                 break;
+            case 'virtFs':
+                $ext = @$scopectl['ext'];
+                echo \lnxMcpExtLoad($callname, $path, $ext, $scopeIn, false,true);
+                break;
+            case 'ucm':
+                lnxmcp()->ucm();
+                break;
+            case 'move':
+                $ext = @$scopectl['ext'];
+                $default = @$scopectl['default'];
+                echo  lnxmcp()->move($callname, $default, $ext, $path,true );
+                break;            
+            case 'goto':
+                $ext = @$scopectl['ext'];
+                $default = @$scopectl['default'];
+                echo  lnxmcp()->move($callname, $default, $ext, $path,false );
+                break;            
             case 'tag':
                 echo lnxMcpTag($callname, $scopeIn);
                 break;
@@ -266,6 +320,7 @@ class mcpMenuClass
                 }
             }
         }
+        lnxmcp()->debugVar('runCommand:result>', $callname, $result);
 
         return $result;
     }
@@ -307,6 +362,9 @@ class mcpMenuClass
             }
             $scopeIn[$callname] = lnxmcp()->runCommand($scopeCtl, $scopeIn);
         }
+        if (lnxmcp()->getCfg('mcp.debug.internal') == true) {
+            lnxmcp()->debugVar('runSequence', 'res', $scopeIn);
+        }
 
         return $scopeIn;
     }
@@ -324,12 +382,32 @@ class mcpMenuClass
         $sequence = lnxmcp()->getResource('menu.'.$action);
         if ($sequence == null) {
             $seqpth = lnxmcp()->getResource('path.menus');
+            if (strstr($action, '\\') != false) {
+                $seqpth = lnxmcp()->getResource('path.module');
+                $arcarr = explode('\\', $action);
+                $action = array_pop($arcarr);
+                $sqalbl = 'mod.path.'.implode('.', $arcarr);
+                $sqapth = lnxmcp()->getResource($sqalbl);
+                if (($sqapth != null) and ($sqapth != '')) {
+                    $seqpth = $sqapth.'/mnu/';
+                } else {
+                    $seqpth .= '/'.implode('/', $arcarr).'/mnu/';
+                }
+            }
+            if (lnxmcp()->getCfg('mcp.debug.internal') == true) {
+                lnxmcp()->debugVar('runMenu>>path', $action, $seqpth);
+            }
             if ($seqpth != null) {
                 $sequence = lnxGetJsonFile($action, $seqpth, 'json');
             }
         }
         if (($sequence != null) && ($sequence != false)) {
-            return lnxmcp()->runSequence($sequence, $scopeIn);
+            $ret = lnxmcp()->runSequence($sequence, $scopeIn);
+            if (lnxmcp()->getCfg('mcp.debug.internal') == true) {
+                lnxmcp()->debugVar('runMenu', $action, $ret);
+            }
+
+            return $ret;
         } else {
             return false;
         }
@@ -352,6 +430,21 @@ class mcpMenuClass
         $sequence = lnxmcp()->getResource('tag.'.$action);
         if ($sequence == null) {
             $seqpth = lnxmcp()->getResource('path.tags');
+            if (strstr($action, '\\') != false) {
+                $seqpth = lnxmcp()->getResource('path.module');
+                $arcarr = explode('\\', $action);
+                $action = array_pop($arcarr);
+                $sqalbl = 'mod.path.'.implode('.', $arcarr);
+                $sqapth = lnxmcp()->getResource($sqalbl);
+                if (($sqapth != null) and ($sqapth != '')) {
+                    $seqpth = $sqapth.'/tag/';
+                } else {
+                    $seqpth .= '/'.implode('/', $arcarr).'/tag/';
+                }
+            }
+            if (lnxmcp()->getCfg('mcp.debug.internal') == true) {
+                lnxmcp()->debugVar('runTag>>path', $action, $seqpth);
+            }
             if ($seqpth != null) {
                 $sequence = lnxGetJsonFile($action, $seqpth, 'json');
             }
@@ -374,6 +467,9 @@ class mcpMenuClass
                 $ret = $res;
             }
         }
+        if (lnxmcp()->getCfg('mcp.debug.internal') == true) {
+            lnxmcp()->debugVar('runTag', $action, $ret);
+        }
 
         return $ret;
     }
@@ -389,8 +485,8 @@ class mcpMenuClass
     public static function TagConverter($text, $scopeIn = array(), $label = null)
     {
         $lnxmcp_cnt = 0;
-        $text = str_replace('[scope-dump]', print_r($scopeIn,1), $text);
-        $text = str_replace('[common-dump]', print_r(lnxmcp()->getCommon(),1), $text);
+        $text = str_replace('[scope-dump]', print_r($scopeIn, 1), $text);
+        $text = str_replace('[common-dump]', print_r(lnxmcp()->getCommon(), 1), $text);
         foreach ($scopeIn as $sink => $sinv) {
             $text = str_ireplace('[scope-'.$sink.']', $sinv, $text);
         }
@@ -425,7 +521,7 @@ class mcpMenuClass
                 $showrem = false;
             }
             if (!isset($scopeCtl['block-type'])) {
-                $scopeCtl['block-type']="";
+                $scopeCtl['block-type'] = '';
             }
             lnxmcp()->info('TagConverter:block-type: '.$scopeCtl['block-type']);
             lnxmcp()->debug($lblcks);
@@ -484,17 +580,16 @@ class mcpMenuClass
                     } catch (\Exception $e) {
                         lnxmcp()->warning('TagConverter:block-type json error '.$e->getMessage());
                     }
-                    $lret="<script type='text/javascript' >".PHP_EOL;
-                    $lret.=$lcmdx."_value=".$jres.";".PHP_EOL;
-                    $lret.="</script>";
+                    $lret = "<script type='text/javascript' >".PHP_EOL;
+                    $lret .= $lcmdx.'_value='.$jres.';'.PHP_EOL;
+                    $lret .= '</script>';
                 break;
-                case "print_r":
-                    $text = str_ireplace($subblk, print_r($lret,1), $text);
+                case 'print_r':
+                    $text = str_ireplace($subblk, print_r($lret, 1), $text);
                 break;
-                default:    
+                default:
                     $text = str_ireplace($subblk, $lret, $text);
             }
-
         }
         while (stripos($text, '[lnxmcp-') !== false) {
             $lp1 = stripos($text, '[lnxmcp-');

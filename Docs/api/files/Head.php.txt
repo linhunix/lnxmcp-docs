@@ -18,11 +18,12 @@ ob_start();
 ////////////////////////////////////////////////////////////////////////////////
 // ENV/CONFIG PATH AND CLASS
 ////////////////////////////////////////////////////////////////////////////////
-global $mcp_path, $app_path, $lnxmcp_phar, $lnxmcp_purl, $scopeInit, $cfg, $mcp;
+global $mcp_path, $app_path, $app_cfg, $app_work, $app_core,$app_user ,$lnxmcp_phar, $lnxmcp_purl, $scopeInit, $cfg, $mcp;
 // define path config
 if (!isset($mcp_path)) {
     $mcp_path = __DIR__.'/';
 }
+$mcp_mpath=realpath($mcp_path.'/../');
 ////////////////////////////////////////////////////////////////////////////////
 // APP PATH AND CLASS
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +46,18 @@ if (empty($app_path)) {
     }
 }
 $app_path = realpath($app_path).'/';
-
+if (!isset($app_cfg)){
+    $app_cfg=$app_path.'/cfg/';
+}
+if (!isset($app_work)){
+    $app_work=$app_path.'/work/';
+}
+if (!isset($app_core)){
+    $app_core=$app_path.'/App/';
+}
+if (!isset($app_user)){
+    $app_user=$app_path.'/usr/';
+}
 ////////////////////////////////////////////////////////////////////////////////
 // SCOPE - INIT
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +66,7 @@ if (!isset($scopePdo)) {
         'ENV' => array(
             'lnx.lite' => array(
                 'config' => 'SCOPE',
-                'path' => $app_path.'/work/sqlite/',
+                'path' => $app_work.'/sqlite/',
                 'database' => 'lnxmcp.work.db',
                 'driver' => 'sqlite',
             ),
@@ -62,20 +74,20 @@ if (!isset($scopePdo)) {
     );
 }
 /*
-    'lnx.ctl' => array(
+    'lnx.myctl' => array(
         'config' => 'ENV',
-        'hostname' => 'LNX_DB_HOST',
-        'database' => 'LNX_DB_2_NAME',
-        'username' => 'LNX_DB_UID',
-        'password' => 'LNX_DB_PWD',
+        'hostname' => 'LNX_MYCTL_DB_HOST',
+        'database' => 'LNX_MYCTL_DB_NAME',
+        'username' => 'LNX_MYCTL_DB_UID',
+        'password' => 'LNX_MYCTL_DB_PWD',
         'driver' => 'mysql',
     ),
-    'lnx.data' => array(
+    'lnx.mydata' => array(
         'config' => 'ENV',
-        'hostname' => 'LNX_DB_HOST',
-        'database' => 'LNX_DB_1_NAME',
-        'username' => 'LNX_DB_UID',
-        'password' => 'LNX_DB_PWD',
+        'hostname' => 'LNX_MYDT_DB_HOST',
+        'database' => 'LNX_MYDT_DB_NAME',
+        'username' => 'LNX_MYDT_DB_UID',
+        'password' => 'LNX_MYDT_DB_PWD',
         'driver' => 'mysql',
     ),
  */
@@ -94,19 +106,22 @@ foreach (array(
     'app.support.mail' => 'support@linhunix.com',
     'app.support.onerrorsend' => false,
     'app.evnlst' => array('db_uid', 'db_pwd', 'db_host', 'db_1_name', 'db_2_name'),
-    'mcp.path.module' => $app_path.'/mcp_module/',
-    'app.path.query' => $app_path.'/App/dbj/',
-    'app.path.menus' => $app_path.'/App/mnu/',
-    'app.path.tags' => $app_path.'/App/tag/',
-    'app.path.module' => $app_path.'/App/mod/',
-    'app.path.template' => $app_path.'/App/tpl/',
-    'app.path.workjob' => $app_path.'/work/job/',
-    'app.path.cache' => $app_path.'/work/cache/',
-    'app.path.session' => $app_path.'/work/session/',
-    'app.path.exchange' => $app_path.'/work/exchange/',
-    'app.path.sqllite' => $app_path.'/work/sqlite/',
-    'app.path.config' => $app_path.'/cfg/',
-    'app.path.language' => $app_path.'/App/lng/',
+    'mcp.path.module' => $mcp_mpath.'/mcp_module/',
+    'app.path.core' => $app_core,
+    'app.path.query' => $app_core.'/dbj/',
+    'app.path.menus' => $app_core.'/mnu/',
+    'app.path.tags' => $app_core.'/tag/',
+    'app.path.module' => $app_core.'/mod/',
+    'app.path.template' => $app_core.'/tpl/',
+    'app.path.language' => $app_core.'/lng/',
+    'app.path.userfile' => $app_user,
+    'app.path.work' => $app_work,
+    'app.path.workjob' => $app_work.'/job/',
+    'app.path.cache' => $app_work.'/cache/',
+    'app.path.session' => $app_work.'/session/',
+    'app.path.exchange' => $app_work.'/exchange/',
+    'app.path.sqllite' => $app_work.'/sqlite/',
+    'app.path.config' => $app_cfg,
     'app.path.pbkac' => '/tmp/',
     'app.menu.InitCommon' => array(
         'pdo' => array('module' => 'Pdo', 'type' => 'serviceCommon', 'input' => $scopePdo),
@@ -131,20 +146,27 @@ if (isset($lnxmcp_phar)) {
         $scopeInit[$lmpk] = $lmpv;
     }
 }
+/// reload primary vars
+$app_path=$scopeInit["app.path"];
+$app_work=$scopeInit["app.path.work"];
+$app_cfg=$scopeInit["app.path.config"];
+$app_core=$scopeInit["app.path.core"];
+$app_user=$scopeInit["app.path.userfile"];
+
 ////////////////////////////////////////////////////////////////////////////////
 // ENV/CONFIG JSON CONFIG AND SETTINGS
 ////////////////////////////////////////////////////////////////////////////////
 try {
-    if (file_exists($app_path.'/cfg/mcp.settings.json')) {
-        $loadscope = json_decode(file_get_contents($app_path.'/cfg/mcp.settings.json'), true);
+    if (file_exists($app_cfg.'/mcp.settings.json')) {
+        $loadscope = json_decode(file_get_contents($app_cfg.'/mcp.settings.json'), true);
         if (is_array($loadscope)) {
             foreach ($loadscope as $lsk => $lsv) {
                 $scopeInit[$lsk] = $lsv;
             }
         }
     }
-    if (file_exists($app_path.'/cfg/mcp.default.json')) {
-        $loadscope = json_decode(file_get_contents($app_path.'/cfg/mcp.default.json'), true);
+    if (file_exists($app_cfg.'/mcp.default.json')) {
+        $loadscope = json_decode(file_get_contents($app_cfg.'/mcp.default.json'), true);
         if (is_array($loadscope)) {
             foreach ($loadscope as $lsk => $lsv) {
                 $scopeInit[$lsk] = $lsv;
@@ -152,7 +174,7 @@ try {
         }
     }
     if (isset($_ENV['MCP_MODE'])) {
-        $hostcfg = $app_path.'/cfg/mcp.mode.'.$_ENV['MCP_MODE'].'.json';
+        $hostcfg = $app_cfg.'/mcp.mode.'.$_ENV['MCP_MODE'].'.json';
         if (file_exists($hostcfg)) {
             $loadscope = json_decode(file_get_contents($hostcfg), true);
             if (is_array($loadscope)) {
@@ -163,7 +185,7 @@ try {
         }
     }
     if (isset($_SERVER['HTTP_HOST'])) {
-        $hostcfg = $app_path.'/cfg/mcp.site.'.$_SERVER['HTTP_HOST'].'.json';
+        $hostcfg = $app_cfg.'/mcp.site.'.$_SERVER['HTTP_HOST'].'.json';
         if (file_exists($hostcfg)) {
             $loadscope = json_decode(file_get_contents($hostcfg), true);
             if (is_array($loadscope)) {
@@ -174,7 +196,7 @@ try {
         }
     }
     if (isset($_SERVER['SERVER_NAME'])) {
-        $hostcfg = $app_path.'/cfg/mcp.server.'.$_SERVER['SERVER_NAME'].'.json';
+        $hostcfg = $app_cfg.'/mcp.server.'.$_SERVER['SERVER_NAME'].'.json';
         if (file_exists($hostcfg)) {
             $loadscope = json_decode(file_get_contents($hostcfg), true);
             if (is_array($loadscope)) {
@@ -189,8 +211,8 @@ try {
             include $scopeInit['preload'];
         }
     } else {
-        if (file_exists($app_path.'/cfg/mcp.preload.php')) {
-            include $app_path.'/cfg/mcp.preload.php';
+        if (file_exists($app_cfg.'/mcp.preload.php')) {
+            include $app_cfg.'/mcp.preload.php';
         }
     }
     if (isset($scopeInit['loadenv'])) {
@@ -207,6 +229,11 @@ try {
 } catch (Exception $e) {
     error_log('LNXMCP HEAD CFG ERROR:'.$e->get_message);
 }
+$app_path=$scopeInit["app.path"];
+$app_work=$scopeInit["app.path.work"];
+$app_cfg=$scopeInit["app.path.config"];
+$app_user=$scopeInit["app.path.userfile"];
+$app_core=$scopeInit["app.path.core"];
 ////////////////////////////////////////////////////////////////////////////////
 // ENVIRONMENT
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,6 +257,7 @@ if (!isset($scopeInit['app.timezone'])) {
     $scopeInit['app.timezone'] = 'Europe/London';
 }
 $scopeInit['mcp.path'] = $mcp_path;
+$scopeInit['mcp.path.root'] = $mcp_mpath;
 $scopeInit['mcp.ver'] = file_get_contents($mcp_path.'/mcp_version');
 ////////////////////////////////////////////////////////////////////////////////
 // DATABASE
@@ -241,52 +269,53 @@ if (!isset($scopeInit['app.mysqli'])) {
     $scopeInit['app.mysqli'] = false;
 }
 ////////////////////////////////////////////////////////////////////////////////
-// CLASS LOADER
+// CLASS LOADER - FUNCTION 
 ////////////////////////////////////////////////////////////////////////////////
-$alrf = true;
-$funpath = $mcp_path.'/Tools/Func.index.php';
-$aldpath = $mcp_path.'/Tools/Class.index.php';
-$stppath = $mcp_path.'/Tools/Step.index.php';
+$common_path=$mcp_path;
+$common_xpath=$mcp_mpath.'/mcp_modules/';
+$common_apath=$mcp_mpath;
+
 if (isset($scopeInit['phar']) == false) {
+    $scopeInit['mcp.loader'] = 'AutoLoadSrc';
     $scopeInit['phar'] = false;
 }
 if ($scopeInit['phar'] == true) {
-    if (file_exists($scopeInit['purl'].'/vendor/autoload.php')) {
-        require $scopeInit['purl'].'/vendor/autoload.php';
-        $alrf = false;
-    }
-    $funpath = $scopeInit['purl'].'/mcp/Tools/Func.index.php';
-    $aldpath = $scopeInit['purl'].'/mcp/Tools/Class.index.php';
-    $stppath = $scopeInit['purl'].'/mcp/Tools/Step.index.php';
+    $scopeInit['mcp.loader'] = 'AutoLoadPhar';
+    $common_path=$scopeInit['purl'].'/mcp/';
+    $common_xpath=$scopeInit['purl'].'/mcp_modules/';
+    $common_apath=$scopeInit['purl'];
+
 }
-if ($alrf) {
+$funpath = $common_path.'/Tools/Func.index.php';
+$clspath = $common_path.'/Tools/Class.index.php';
+$aldpath = $common_path.'/Tools/Alt.index.php';
+$stppath = $common_path.'/Tools/Step.index.php';
+////////////////////////////////////////////////////////////////////////////////
+// CLASS LOADER - AUTOLOAD 
+////////////////////////////////////////////////////////////////////////////////
+if (file_exists($common_apath.'/vendor/autoload.php')) {
+    require $common_apath.'/vendor/autoload.php';
+}
+else
+{
     if (file_exists($app_path.'/vendor/autoload.php')) {
         require $app_path.'/vendor/autoload.php';
     }
 }
+////////////////////////////////////////////////////////////////////////////////
+// CLASS LOADER - AUTOLOAD 
+////////////////////////////////////////////////////////////////////////////////
 include_once $funpath;
+include_once $clspath;
 if (class_exists("\Composer\Autoload\ClassLoader")) {
     $classLoader = new \Composer\Autoload\ClassLoader();
     $psr = array();
-    if ($scopeInit['phar'] == true) {
-        $classLoader->addPsr4('LinHUniX\\Mcp\\', $scopeInit['purl'].'/mcp/Mcp');
-        $classLoader->addPsr4('LinHUniX\\Gfx\\', $scopeInit['purl'].'/mcp/Gfx');
-        $classLoader->addPsr4('LinHUniX\\Pdo\\', $scopeInit['purl'].'/mcp/Pdo');
-        $classLoader->addPsr4('LinHUniX\\Mail\\', $scopeInit['purl'].'/mcp/Mail');
-        $classLoader->addPsr4('LinHUniX\\Ln4\\', $scopeInit['purl'].'/mcp/Ln4');
-        $classLoader->addPsr4('LinHUniX\\Nsql\\', $scopeInit['purl'].'/mcp/Nsql');
-        $classLoader->addPsr4('LinHUniX\\Auth\\', $scopeInit['purl'].'/mcp/Auth');
-        $scopeInit['mcp.loader'] = 'AutoLoadPhar';
-    } else {
-        $classLoader->addPsr4('LinHUniX\\Mcp\\', $app_path.'/mcp/Mcp');
-        $classLoader->addPsr4('LinHUniX\\Gfx\\', $app_path.'/mcp/Gfx');
-        $classLoader->addPsr4('LinHUniX\\Pdo\\', $app_path.'/mcp/Pdo');
-        $classLoader->addPsr4('LinHUniX\\Mail\\', $app_path.'/mcp/Mail');
-        $classLoader->addPsr4('LinHUniX\\Ln4\\', $app_path.'/mcp/Ln4');
-        $classLoader->addPsr4('LinHUniX\\Nsql\\', $app_path.'/mcp/Nsql');
-        $classLoader->addPsr4('LinHUniX\\Auth\\', $app_path.'/mcp/Auth');
-        $scopeInit['mcp.loader'] = 'AutoLoadSrc';
-    }
+    $classLoader->addPsr4('LinHUniX\\Mcp\\', $common_path.'/Mcp');
+    $classLoader->addPsr4('LinHUniX\\Gfx\\', $common_path.'/Gfx');
+    $classLoader->addPsr4('LinHUniX\\Pdo\\', $common_path.'/Pdo');
+    $classLoader->addPsr4('LinHUniX\\Mail\\', $common_path.'/Mail');
+    $classLoader->addPsr4('LinHUniX\\Auth\\', $common_path.'/Auth');
+    $classLoader->addPsr4('LinHUniX\\Cron\\', $common_path.'/Cron');
     $classLoader->register();
     $classLoader->setUseIncludePath(true);
 } else {
@@ -298,17 +327,9 @@ if (class_exists("\Composer\Autoload\ClassLoader")) {
         selfAutoLoad($app_path.DIRECTORY_SEPARATOR.'mcp');
     }
 }
-if (isset($scopeInit['app.debug'])) {
-    if ($scopeInit['app.debug'] == true) {
-        if (isset($scopeInit['purl'])) {
-            error_log('Load Mcp by '.$scopeInit['mcp.loader'].' ['.$scopeInit['phar'].']');
-            error_log('PURL:'.$scopeInit['purl']);
-            error_log('FILE:'.$aldpath);
-        } else {
-            error_log('Load Mcp by '.$scopeInit['mcp.loader'].' ['.$scopeInit['mcp.path'].']');
-        }
-    }
-}
+////////////////////////////////////////////////////////////////////////////////
+// CLASS LOADER - MCP CORE 
+////////////////////////////////////////////////////////////////////////////////
 if (class_exists("\LinHUniX\Mcp\masterControlProgram")) {
     $mcp = new \LinHUniX\Mcp\masterControlProgram($scopeInit);
 } else {
@@ -316,6 +337,23 @@ if (class_exists("\LinHUniX\Mcp\masterControlProgram")) {
 }
 mcpErrorHandlerInit();
 mcpShutDownInit();
+////////////////////////////////////////////////////////////////////////////////
+// CLASS LOADER - MCP_MODULED 
+////////////////////////////////////////////////////////////////////////////////
+lnxmcp()->setCfg('app.mod.path.LinHUniX.LnxMcpAdm', $common_xpath.'/Adm/');
+lnxmcp()->setCfg('app.mod.path.LinHUniX.LnxMcpAdmShell', $common_xpath.'/Adm/Shell/');
+lnxmcp()->setCfg('app.mod.path.LinHUniX.LnxMcpAdmHttpd', $common_xpath.'/Adm/Httpd/');
+lnxmcp()->setCfg('app.mod.path.LinHUniX.Ln4', $common_xpath.'/Ln4/');
+lnxmcp()->setCfg('app.mod.path.LinHUniX.Nsql', $common_xpath.'/Nsql/');
+lnxmcp()->setCfg('app.mod.path.LinHUniX.Upload', $common_xpath.'/Upload/');
+////////////////////////////////////////////////////////////////////////////////
+// CLASS LOADER - SUMMARY 
+////////////////////////////////////////////////////////////////////////////////
+if (isset($scopeInit['app.debug'])) {
+    if ($scopeInit['app.debug'] == true) {
+        error_log('Load Mcp by '.$scopeInit['mcp.loader'].' ['.$common_path.']');
+    }
+}
 ////////////////////////////////////////////////////////////////////////////////
 // Menu Calling
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,5 +366,12 @@ ob_start();
 ////////////////////////////////////////////////////////////////////////////////
 if (lnxmcp()->getCfg('PreloadOnly') != true) {
     include_once $stppath;
+}
+////////////////////////////////////////////////////////////////////////////////
+// CHECK POSTLOAD STEP
+////////////////////////////////////////////////////////////////////////////////
+$postload=lnxmcp()->getCfg("app.postload.cmd");
+if (is_array($postload)){
+    lnxmcp()->runCommand($postload,array());
 }
 
